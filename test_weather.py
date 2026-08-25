@@ -1,20 +1,33 @@
 import pandas as pd
 
+from app.config import (
+    DEFAULT_START_DATE,
+    DEFAULT_END_DATE
+)
+
 from app.data.weather import get_historical_weather
+
+from app.services.weather_service import (
+    clean_weather_data,
+    calculate_climate_summary
+)
 
 
 latitude = float(input("Enter farm latitude: "))
 longitude = float(input("Enter farm longitude: "))
 
-weather = get_historical_weather(latitude, longitude)
+
+weather = get_historical_weather(
+    latitude,
+    longitude,
+    DEFAULT_START_DATE,
+    DEFAULT_END_DATE
+)
 
 
-# Calculate climate statistics
-average_temperature = weather["temperature_2m_mean"].mean()
-average_max_temperature = weather["temperature_2m_max"].mean()
-average_min_temperature = weather["temperature_2m_min"].mean()
-annual_rainfall = weather["precipitation_sum"].sum()
-annual_et0 = weather["et0_fao_evapotranspiration"].sum()
+weather = clean_weather_data(weather)
+
+summary = calculate_climate_summary(weather)
 
 
 print("\nAGROAI FARM CLIMATE PROFILE")
@@ -24,19 +37,39 @@ print(f"Latitude: {latitude}")
 print(f"Longitude: {longitude}")
 
 print("\nTEMPERATURE")
-print(f"Average: {average_temperature:.2f} °C")
-print(f"Average maximum: {average_max_temperature:.2f} °C")
-print(f"Average minimum: {average_min_temperature:.2f} °C")
+
+print(
+    f"Average: "
+    f"{summary['average_temperature']:.2f} °C"
+)
+
+print(
+    f"Average maximum: "
+    f"{summary['average_max_temperature']:.2f} °C"
+)
+
+print(
+    f"Average minimum: "
+    f"{summary['average_min_temperature']:.2f} °C"
+)
 
 print("\nRAINFALL")
-print(f"Annual rainfall: {annual_rainfall:.2f} mm")
+
+print(
+    f"Annual rainfall: "
+    f"{summary['annual_rainfall']:.2f} mm"
+)
 
 print("\nWATER")
-print(f"Annual reference ET0: {annual_et0:.2f} mm")
+
+print(
+    f"Annual reference ET0: "
+    f"{summary['annual_et0']:.2f} mm"
+)
 
 
-# Calculate monthly rainfall
-weather["month"] = pd.to_datetime(weather["time"]).dt.month
+# Monthly rainfall
+weather["month"] = weather["time"].dt.month
 
 monthly_rainfall = (
     weather
@@ -51,7 +84,7 @@ for month, rainfall in monthly_rainfall.items():
     print(f"Month {month}: {rainfall:.1f} mm")
 
 
-# Save raw weather data
+# Save data
 weather.to_csv(
     "data/raw/weather/farm_weather_2025.csv",
     index=False
